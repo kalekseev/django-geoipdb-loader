@@ -1,0 +1,11 @@
+[paths]
+source =
+    src/geoipdb_loader
+    .tox/*/lib/python*/site-packages/geoipdb_loader
+
+[run]
+branch = true
+source = geoipdb_loader
+
+[report]
+show_missing = true
