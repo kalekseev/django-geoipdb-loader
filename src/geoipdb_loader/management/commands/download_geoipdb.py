@@ -10,13 +10,7 @@ class Logger(object):
     def warn(self, template, *args):
         self.stdout.write(self.style.WARNING(template % args))
 
-    def error(self, template, *args):
-        self.stdout.write(self.style.ERROR(template % args))
-
     def info(self, template, *args):
-        self.stdout.write(template % args)
-
-    def debug(self, template, *args):
         self.stdout.write(template % args)
 
 

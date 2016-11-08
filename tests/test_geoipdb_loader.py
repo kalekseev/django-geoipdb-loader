@@ -4,9 +4,12 @@ import random
 import string
 import sys
 from io import BytesIO
+
 import geoipdb_loader
 
 import pytest
+from django.core import management
+from django.core.exceptions import ImproperlyConfigured
 from django.utils import six
 
 PY2 = sys.version_info[0] == 2
@@ -20,13 +23,13 @@ else:
 
 @pytest.fixture
 def random_string():
-    return bytes(b''.join(
+    return b''.join(
         six.b(random.choice(string.ascii_uppercase + string.digits + '\n'))
         for _ in range(100)
-    ))
+    )
 
 
-def test_match_md5(monkeypatch, settings, random_string):
+def test_match_md5(monkeypatch, random_string):
     md5 = hashlib.md5()
     md5.update(random_string)
     md5sum = md5.hexdigest()
@@ -59,5 +62,41 @@ def test_download_file(monkeypatch, tmpdir, settings, random_string, is_md5_matc
         with pytest.raises(ValueError) as e:
             geoipdb_loader._download_file('somedb.mmdb.gz', skip_md5=skip_md5)
         assert str(e.value) == 'md5 of %s doesn\'t match the signature.' % tmpdir.join('somedb.mmdb.gz')
-    if not skip_md5:
+    if skip_md5:
+        assert not match_md5_mock.call_count
+    else:
         assert match_md5_mock.call_count == 1
+
+
+@pytest.mark.parametrize('skip_city', [False, True])
+@pytest.mark.parametrize('skip_country', [False, True])
+@pytest.mark.parametrize('skip_md5', [False, True])
+def test_command(monkeypatch, settings, tmpdir, skip_city, skip_country, skip_md5):
+    settings.GEOIP_PATH = str(tmpdir)
+    download_file_mock = mock.Mock()
+    monkeypatch.setattr('geoipdb_loader._download_file', download_file_mock)
+    out = six.StringIO()
+    args = []
+    if skip_city:
+        args.append('--skip-city')
+    if skip_country:
+        args.append('--skip-country')
+    if skip_md5:
+        args.append('--skip-md5')
+    management.call_command('download_geoipdb', stdout=out, *args)
+    if not skip_city:
+        download_file_mock.assert_any_call('GeoLite2-City.mmdb.gz', skip_md5=skip_md5)
+    if not skip_country:
+        download_file_mock.assert_any_call('GeoLite2-Country.mmdb.gz', skip_md5=skip_md5)
+    assert download_file_mock.call_count == int(not skip_city) + int(not skip_country)
+
+
+def test_download_edge_cases(monkeypatch, settings, tmpdir):
+    with pytest.raises(ImproperlyConfigured) as e:
+        geoipdb_loader.download(skip_city=True, skip_country=True)
+    assert str(e.value) == 'GEOIP_PATH must be configured in settings.'
+    log_mock = mock.Mock()
+    settings.GEOIP_PATH = str(tmpdir)
+    monkeypatch.setattr('logging.getLogger', lambda n: log_mock)
+    geoipdb_loader.download(skip_city=True, skip_country=True)
+    log_mock.warn.assert_called_once_with('Nothing to download.')
