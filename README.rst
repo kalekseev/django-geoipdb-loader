@@ -1,19 +1,35 @@
+======================
 Django GeoIP DB Loader
-==========================
+======================
+
+.. start-badges
+
+.. list-table::
+    :stub-columns: 1
+
+    * - tests
+      - |travis|
+
+.. |travis| image:: https://travis-ci.org/kalekseev/django-geoipdb-loader.svg?branch=master
+    :alt: Travis-Ci Build Status
+    :target: https://travis-ci.org/kalekseev/django-geoipdb-loader
+
+
+.. end-badges
 
 Helps download and keep updated maxmind's geoip db required for django GeoIP2 (django 1.9+)
 
 
 Why and when to use?
---------------------
+====================
 
 If you don't mind installing and configuring official geoipupdate binary on your server
 then I'd recommend to use it http://dev.maxmind.com/geoip/geoipupdate/
 This app was designed for quick and easy setup of geoipdb via django settings.
 
 
-Install
--------
+Installation
+============
 
 Using pip::
 
