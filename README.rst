@@ -8,11 +8,15 @@ Django GeoIP DB Loader
     :stub-columns: 1
 
     * - tests
-      - |travis|
+      - | |travis| |coveralls|
 
 .. |travis| image:: https://travis-ci.org/kalekseev/django-geoipdb-loader.svg?branch=master
     :alt: Travis-Ci Build Status
     :target: https://travis-ci.org/kalekseev/django-geoipdb-loader
+
+.. |coveralls| image:: https://coveralls.io/repos/github/kalekseev/django-geoipdb-loader/badge.svg?branch=master
+    :alt: Coverage Status
+    :target: https://coveralls.io/repos/github/kalekseev/django-geoipdb-loader
 
 
 .. end-badges
