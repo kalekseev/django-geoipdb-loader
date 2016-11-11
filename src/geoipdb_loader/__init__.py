@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os
 import shutil
 import errno
@@ -49,12 +47,15 @@ def _get_geoipdb_version():
     return 2
 
 
-def _download_file(filepath, skip_md5=False):
-    _, filename = os.path.split(filepath)
+def _download_file(maxmind_filename, skip_md5=False, local_filename=None):
+    _, filename = os.path.split(maxmind_filename)
     downloaded_file = os.path.join(settings.GEOIP_PATH, filename)
-    db_file = os.path.splitext(downloaded_file)[0]
+    if local_filename:
+        db_file = os.path.join(settings.GEOIP_PATH, local_filename)
+    else:
+        db_file = os.path.splitext(downloaded_file)[0]
     urllib.request.urlretrieve(
-        urllib.parse.urljoin(MAXMIND_URL, filepath),
+        urllib.parse.urljoin(MAXMIND_URL, maxmind_filename),
         downloaded_file
     )
     with gzip.open(downloaded_file, 'rb') as outfile:
@@ -83,16 +84,18 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
         raise ImproperlyConfigured('GEOIP_PATH must be configured in settings.')
     if not skip_city:
         files.append(
-            'GeoLite2-City.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCity.dat.gz',
+            ('GeoLite2-City.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCity.dat.gz',
+             getattr(settings, 'GEOIP_CITY', None))
         )
     if not skip_country:
         files.append(
-            'GeoLite2-Country.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCountry/GeoIP.dat.gz',
+            ('GeoLite2-Country.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCountry/GeoIP.dat.gz',
+             getattr(settings, 'GEOIP_COUNTRY', None))
         )
     if not files:
         logger.warn('Nothing to download.')
         return
-    for filename in files:
-        logger.info('Downloading %s ...' % filename)
-        _download_file(filename, skip_md5=skip_md5)
+    for maxmind_filename, local_filename in files:
+        logger.info('Downloading %s ...' % maxmind_filename)
+        _download_file(maxmind_filename, skip_md5=skip_md5, local_filename=local_filename)
     logger.info('Geoip files are updated.')

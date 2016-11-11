@@ -54,7 +54,7 @@ Usage
 =====
 
 Run `manage.py download_geoipdb` to download geoip files.
-By default for django 1.9+ `geoip2` files will be download,
+By default for django 1.9+ `geoip2` files are used,
 while for django 1.8 `geoip` files are used.
 You can set version in settings::
 
@@ -66,7 +66,7 @@ In order to automatically update the geoip files you can use provided celery tas
     CELERYBEAT_SCHEDULE = {
         'update-geoipdb': {
             'task': 'geoipdb_loader.tasks.update_geoipdb',
-            'schedule': crontab(day_of_week=7),
+            'schedule': crontab(day_of_week=6),
         },
     }
 

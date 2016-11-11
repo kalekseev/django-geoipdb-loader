@@ -86,9 +86,9 @@ def test_command(monkeypatch, settings, tmpdir, skip_city, skip_country, skip_md
         args.append('--skip-md5')
     management.call_command('download_geoipdb', stdout=out, *args)
     if not skip_city:
-        download_file_mock.assert_any_call('GeoLite2-City.mmdb.gz', skip_md5=skip_md5)
+        download_file_mock.assert_any_call('GeoLite2-City.mmdb.gz', skip_md5=skip_md5, local_filename=None)
     if not skip_country:
-        download_file_mock.assert_any_call('GeoLite2-Country.mmdb.gz', skip_md5=skip_md5)
+        download_file_mock.assert_any_call('GeoLite2-Country.mmdb.gz', skip_md5=skip_md5, local_filename=None)
     assert download_file_mock.call_count == int(not skip_city) + int(not skip_country)
 
 
@@ -104,12 +104,17 @@ def test_download_edge_cases(monkeypatch, settings, tmpdir):
 
 
 @pytest.mark.parametrize('version', [1, 2, None])
-def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string):
+@pytest.mark.parametrize('paths', [
+    (None, None),
+    ('country.dat', 'city.mmdb')
+])
+def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, paths):
     def create_gzip(url, filename):
         suffix = b'city' if 'city' in filename.lower() else b'country'
         with gzip.open(filename, 'wb') as f:
             f.write(random_string + suffix)
 
+    settings.GEOIP_COUNTRY, settings.GEOIP_CITY = paths
     settings.GEOIP_PATH = str(tmpdir)
     settings.GEOIPDB_VERSION = version
     monkeypatch.setattr(
@@ -121,12 +126,12 @@ def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string):
     if not version:
         version = 1 if django.VERSION[:2] == (1, 8) else 2
     if version == 1:
-        assert open(str(tmpdir.join('GeoIP.dat')), 'rb').read() == \
+        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoIP.dat')), 'rb').read() == \
                 random_string + b'country'
-        assert open(str(tmpdir.join('GeoLiteCity.dat')), 'rb').read() == \
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLiteCity.dat')), 'rb').read() == \
                 random_string + b'city'
     else:
-        assert open(str(tmpdir.join('GeoLite2-Country.mmdb')), 'rb').read() == \
+        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoLite2-Country.mmdb')), 'rb').read() == \
                 random_string + b'country'
-        assert open(str(tmpdir.join('GeoLite2-City.mmdb')), 'rb').read() == \
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read() == \
                 random_string + b'city'
