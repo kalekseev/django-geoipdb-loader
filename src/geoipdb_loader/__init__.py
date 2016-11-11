@@ -7,6 +7,7 @@ import tempfile
 import gzip
 import hashlib
 import logging
+import django
 from django.utils.six.moves import urllib
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
@@ -39,11 +40,21 @@ def _atomic_write(fp, dst):
         os.rename(tmpfile.name, dst)
 
 
-def _download_file(filename, skip_md5=False):
+def _get_geoipdb_version():
+    geoipdb_version = getattr(settings, 'GEOIPDB_VERSION', None)
+    if geoipdb_version in (1, 2):
+        return geoipdb_version
+    if django.VERSION[:2] == (1, 8):
+        return 1
+    return 2
+
+
+def _download_file(filepath, skip_md5=False):
+    _, filename = os.path.split(filepath)
     downloaded_file = os.path.join(settings.GEOIP_PATH, filename)
     db_file = os.path.splitext(downloaded_file)[0]
     urllib.request.urlretrieve(
-        urllib.parse.urljoin(MAXMIND_URL, filename),
+        urllib.parse.urljoin(MAXMIND_URL, filepath),
         downloaded_file
     )
     with gzip.open(downloaded_file, 'rb') as outfile:
@@ -66,13 +77,18 @@ def _download_file(filename, skip_md5=False):
 def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
     if not logger:
         logger = logging.getLogger(__name__)
+    geoipdb_version = _get_geoipdb_version()
     files = []
     if not hasattr(settings, 'GEOIP_PATH'):
         raise ImproperlyConfigured('GEOIP_PATH must be configured in settings.')
     if not skip_city:
-        files.append('GeoLite2-City.mmdb.gz')
+        files.append(
+            'GeoLite2-City.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCity.dat.gz',
+        )
     if not skip_country:
-        files.append('GeoLite2-Country.mmdb.gz')
+        files.append(
+            'GeoLite2-Country.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCountry/GeoIP.dat.gz',
+        )
     if not files:
         logger.warn('Nothing to download.')
         return

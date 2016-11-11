@@ -7,6 +7,7 @@ from io import BytesIO
 
 import geoipdb_loader
 
+import django
 import pytest
 from django.core import management
 from django.core.exceptions import ImproperlyConfigured
@@ -100,3 +101,32 @@ def test_download_edge_cases(monkeypatch, settings, tmpdir):
     monkeypatch.setattr('logging.getLogger', lambda n: log_mock)
     geoipdb_loader.download(skip_city=True, skip_country=True)
     log_mock.warn.assert_called_once_with('Nothing to download.')
+
+
+@pytest.mark.parametrize('version', [1, 2, None])
+def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string):
+    def create_gzip(url, filename):
+        suffix = b'city' if 'city' in filename.lower() else b'country'
+        with gzip.open(filename, 'wb') as f:
+            f.write(random_string + suffix)
+
+    settings.GEOIP_PATH = str(tmpdir)
+    settings.GEOIPDB_VERSION = version
+    monkeypatch.setattr(
+        'django.utils.six.moves.urllib.request.urlretrieve',
+        mock.Mock(side_effect=create_gzip)
+    )
+    geoipdb_loader.download(skip_md5=True)
+
+    if not version:
+        version = 1 if django.VERSION[:2] == (1, 8) else 2
+    if version == 1:
+        assert open(str(tmpdir.join('GeoIP.dat')), 'rb').read() == \
+                random_string + b'country'
+        assert open(str(tmpdir.join('GeoLiteCity.dat')), 'rb').read() == \
+                random_string + b'city'
+    else:
+        assert open(str(tmpdir.join('GeoLite2-Country.mmdb')), 'rb').read() == \
+                random_string + b'country'
+        assert open(str(tmpdir.join('GeoLite2-City.mmdb')), 'rb').read() == \
+                random_string + b'city'
