@@ -1,6 +1,9 @@
 from __future__ import print_function
 
 import os
+import shutil
+import errno
+import tempfile
 import gzip
 import hashlib
 import logging
@@ -19,6 +22,21 @@ def _match_md5(fp, md5_url):
         m.update(line)
     fp.seek(0)
     return m.hexdigest() == md5
+
+
+def _atomic_write(fp, dst):
+    tmpfile = tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(dst))
+    shutil.copyfileobj(fp, tmpfile.file)
+    tmpfile.file.flush()
+    os.fsync(tmpfile.file.fileno())
+    tmpfile.file.close()
+    try:
+        os.rename(tmpfile.name, dst)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        os.unlink(dst)
+        os.rename(tmpfile.name, dst)
 
 
 def _download_file(filename, skip_md5=False):
@@ -41,8 +59,7 @@ def _download_file(filename, skip_md5=False):
                     raise ValueError(
                         'md5 of %s doesn\'t match the signature.' % downloaded_file
                     )
-        with open(db_file, 'wb') as infile:
-            infile.writelines(outfile)
+        _atomic_write(outfile, db_file)
     os.remove(downloaded_file)
 
 
