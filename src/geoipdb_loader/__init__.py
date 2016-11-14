@@ -83,19 +83,29 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
     if not hasattr(settings, 'GEOIP_PATH'):
         raise ImproperlyConfigured('GEOIP_PATH must be configured in settings.')
     if not skip_city:
-        files.append(
-            ('GeoLite2-City.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCity.dat.gz',
-             getattr(settings, 'GEOIP_CITY', None))
-        )
+        city_file = {
+            'maxmind_filename': 'GeoLite2-City.mmdb.gz',
+            'skip_md5': skip_md5,
+            'local_filename': getattr(settings, 'GEOIP_CITY', None),
+        }
+        if geoipdb_version == 1:
+            city_file['maxmind_filename'] = 'GeoLiteCity.dat.gz'
+            city_file['skip_md5'] = True
+        files.append(city_file)
     if not skip_country:
-        files.append(
-            ('GeoLite2-Country.mmdb.gz' if geoipdb_version == 2 else 'GeoLiteCountry/GeoIP.dat.gz',
-             getattr(settings, 'GEOIP_COUNTRY', None))
-        )
+        country_file = {
+            'maxmind_filename': 'GeoLite2-Country.mmdb.gz',
+            'skip_md5': skip_md5,
+            'local_filename': getattr(settings, 'GEOIP_COUNTRY', None),
+        }
+        if geoipdb_version == 1:
+            country_file['maxmind_filename'] = 'GeoLiteCountry/GeoIP.dat.gz'
+            country_file['skip_md5'] = True
+        files.append(country_file)
     if not files:
         logger.warn('Nothing to download.')
         return
-    for maxmind_filename, local_filename in files:
-        logger.info('Downloading %s ...' % maxmind_filename)
-        _download_file(maxmind_filename, skip_md5=skip_md5, local_filename=local_filename)
+    for entry in files:
+        logger.info('Downloading %s ...' % entry['maxmind_filename'])
+        _download_file(**entry)
     logger.info('Geoip files are updated.')

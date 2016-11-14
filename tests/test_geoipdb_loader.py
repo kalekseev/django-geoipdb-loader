@@ -86,9 +86,17 @@ def test_command(monkeypatch, settings, tmpdir, skip_city, skip_country, skip_md
         args.append('--skip-md5')
     management.call_command('download_geoipdb', stdout=out, *args)
     if not skip_city:
-        download_file_mock.assert_any_call('GeoLite2-City.mmdb.gz', skip_md5=skip_md5, local_filename=None)
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLite2-City.mmdb.gz',
+            skip_md5=skip_md5,
+            local_filename=None,
+        )
     if not skip_country:
-        download_file_mock.assert_any_call('GeoLite2-Country.mmdb.gz', skip_md5=skip_md5, local_filename=None)
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLite2-Country.mmdb.gz',
+            skip_md5=skip_md5,
+            local_filename=None,
+        )
     assert download_file_mock.call_count == int(not skip_city) + int(not skip_country)
 
 
@@ -135,3 +143,37 @@ def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, 
                 random_string + b'country'
         assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read() == \
                 random_string + b'city'
+
+
+@pytest.mark.parametrize('version', [1, 2, None])
+def test_download_on_version(monkeypatch, settings, version, tmpdir):
+    settings.GEOIPDB_VERSION = version
+    settings.GEOIP_PATH = str(tmpdir)
+    if not version:
+        version = 1 if django.VERSION[:2] == (1, 8) else 2
+    download_file_mock = mock.Mock()
+    monkeypatch.setattr('geoipdb_loader._download_file', download_file_mock)
+    geoipdb_loader.download()
+    if version == 2:
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLite2-City.mmdb.gz',
+            skip_md5=False,
+            local_filename=None,
+        )
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLite2-Country.mmdb.gz',
+            skip_md5=False,
+            local_filename=None,
+        )
+    else:
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLiteCity.dat.gz',
+            skip_md5=True,
+            local_filename=None,
+        )
+        download_file_mock.assert_any_call(
+            maxmind_filename='GeoLiteCountry/GeoIP.dat.gz',
+            skip_md5=True,
+            local_filename=None,
+        )
+    assert download_file_mock.call_count == 2
