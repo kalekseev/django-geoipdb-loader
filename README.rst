@@ -21,15 +21,17 @@ Django GeoIP DB Loader
 
 .. end-badges
 
-Helps download and keep updated maxmind's geoip db required for django GeoIP2
+Helps download and keep updated maxmind's geoip db required for `django GeoIP <https://docs.djangoproject.com/en/1.10/ref/contrib/gis/geoip2/>`_
 
 
 Why and when to use?
 ====================
 
-If you don't mind installing and configuring official geoipupdate binary on your server
-then I'd recommend to use it http://dev.maxmind.com/geoip/geoipupdate/
-This app was designed for quick and easy setup of geoip updates via django settings.
+If you don't mind installing and configuring
+`official geoipupdate <http://dev.maxmind.com/geoip/geoipupdate/>`_ on your server
+then I'd recommend to use it
+If you want a simple method to download db files via django command or schedule
+updates using celery then this app is the way to go.
 
 
 Installation
@@ -39,7 +41,7 @@ Using pip::
 
     pip install django-geoipdb-loader
 
-Add the app to INSTALLED_APPS in settings file and configure GEOIP_PATH::
+Add the app to INSTALLED_APPS and configure GEOIP_PATH::
 
     INSTALLED_APPS = [
         ...
@@ -53,10 +55,9 @@ Add the app to INSTALLED_APPS in settings file and configure GEOIP_PATH::
 Usage
 =====
 
-Run `manage.py download_geoipdb` to download geoip files.
-By default for django 1.9+ `geoip2` files are used,
-while for django 1.8 `geoip` files are used.
-You can set version in settings::
+Run :code:`manage.py download_geoipdb` to download geoip files.
+By default GeoIP2 files are used for django 1.9+ and GeoIP files for django 1.8.
+You can override db version in settings::
 
     GEOIPDB_VERSION = 2  # 1 or 2
 
@@ -72,4 +73,4 @@ In order to automatically update the geoip files you can use provided celery tas
 
 or crontab::
 
-    * * * * 7 manage.py download_geoipdb
+    * * * * 6 manage.py download_geoipdb
