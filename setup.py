@@ -17,7 +17,7 @@ def read(*names, **kwargs):
 
 setup(
     name='django-geoipdb-loader',
-    version='0.5.0',
+    version='0.6.0',
     description="Helps download and keep updated maxmind's geoip db required for django GeoIP",
     long_description='%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
@@ -31,7 +31,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Framework :: Django',
         'Intended Audience :: Developers',
@@ -41,8 +41,8 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
     keywords=['django', 'geoip'],
 )

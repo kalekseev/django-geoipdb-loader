@@ -29,7 +29,7 @@ Why and when to use?
 
 If you don't mind installing and configuring
 `official geoipupdate <http://dev.maxmind.com/geoip/geoipupdate/>`_ on your server
-then I'd recommend to use it
+then I'd recommend to use it.
 If you want a simple method to download db files via django command or schedule
 updates using celery then this app is the way to go.
 

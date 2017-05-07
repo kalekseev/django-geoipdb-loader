@@ -1,14 +1,15 @@
-import os
-import shutil
 import errno
-import tempfile
 import gzip
 import hashlib
 import logging
+import os
+import shutil
+import tempfile
+
 import django
-from django.utils.six.moves import urllib
-from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.six.moves import urllib
 
 
 MAXMIND_URL = 'http://geolite.maxmind.com/download/geoip/database/'
