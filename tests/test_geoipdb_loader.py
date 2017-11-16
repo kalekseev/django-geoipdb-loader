@@ -24,22 +24,22 @@ else:
 
 @pytest.fixture
 def random_string():
-    return b''.join(
-        six.b(random.choice(string.ascii_uppercase + string.digits + '\n'))
+    return ''.join(
+        random.choice(string.ascii_uppercase + string.digits + '\n')
         for _ in range(100)
     )
 
 
 def test_match_md5(monkeypatch, random_string):
     md5 = hashlib.md5()
-    md5.update(random_string)
+    md5.update(random_string.encode())
     md5sum = md5.hexdigest()
-    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: md5sum))
+    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: md5sum.encode()))
     monkeypatch.setattr('django.utils.six.moves.urllib.request.urlopen', urlopen_mock)
-    fp = BytesIO(random_string)
+    fp = BytesIO(random_string.encode())
     assert geoipdb_loader._match_md5(fp, 'someurl')
     urlopen_mock.assert_called_once_with('someurl')
-    assert fp.read() == random_string
+    assert fp.read().decode() == random_string
 
 
 @pytest.mark.parametrize('is_md5_match', [False, True])
@@ -47,7 +47,7 @@ def test_match_md5(monkeypatch, random_string):
 def test_download_file(monkeypatch, tmpdir, settings, random_string, is_md5_match, skip_md5):
     def create_gzip(url, filename):
         with gzip.open(filename, 'wb') as f:
-            f.write(random_string)
+            f.write(random_string.encode())
 
     settings.GEOIP_PATH = str(tmpdir)
     monkeypatch.setattr(
@@ -58,7 +58,7 @@ def test_download_file(monkeypatch, tmpdir, settings, random_string, is_md5_matc
     monkeypatch.setattr('geoipdb_loader._match_md5', match_md5_mock)
     if is_md5_match or skip_md5:
         geoipdb_loader._download_file('somedb.mmdb.gz', skip_md5=skip_md5)
-        assert open(str(tmpdir.join('somedb.mmdb')), 'rb').read() == random_string
+        assert open(str(tmpdir.join('somedb.mmdb')), 'rb').read().decode() == random_string
     else:
         with pytest.raises(ValueError) as e:
             geoipdb_loader._download_file('somedb.mmdb.gz', skip_md5=skip_md5)
@@ -118,9 +118,9 @@ def test_download_edge_cases(monkeypatch, settings, tmpdir):
 ])
 def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, paths):
     def create_gzip(url, filename):
-        suffix = b'city' if 'city' in filename.lower() else b'country'
+        suffix = 'city' if 'city' in filename.lower() else 'country'
         with gzip.open(filename, 'wb') as f:
-            f.write(random_string + suffix)
+            f.write(random_string.encode() + suffix.encode())
 
     settings.GEOIP_COUNTRY, settings.GEOIP_CITY = paths
     settings.GEOIP_PATH = str(tmpdir)
@@ -134,15 +134,17 @@ def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, 
     if not version:
         version = 1 if django.VERSION[:2] == (1, 8) else 2
     if version == 1:
-        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoIP.dat')), 'rb').read() == \
-                random_string + b'country'
-        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLiteCity.dat')), 'rb').read() == \
-                random_string + b'city'
+        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoIP.dat')), 'rb').read().decode() == \
+                random_string + 'country'
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLiteCity.dat')), 'rb').read().decode() == \
+                random_string + 'city'
     else:
-        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoLite2-Country.mmdb')), 'rb').read() == \
-                random_string + b'country'
-        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read() == \
-                random_string + b'city'
+        assert open(
+                str(
+                    tmpdir.join(settings.GEOIP_COUNTRY or 'GeoLite2-Country.mmdb')
+                ), 'rb').read().decode() == random_string + 'country'
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read().decode() == \
+                random_string + 'city'
 
 
 @pytest.mark.parametrize('version', [1, 2, None])
