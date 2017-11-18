@@ -21,7 +21,7 @@ def _match_md5(fp, md5_url):
     for line in fp:
         m.update(line)
     fp.seek(0)
-    return m.hexdigest() == md5
+    return m.hexdigest() == md5.decode()
 
 
 def _atomic_write(fp, dst):
