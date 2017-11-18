@@ -23,31 +23,31 @@ else:
 
 
 @pytest.fixture
-def random_string():
-    return ''.join(
+def random_bytes():
+    return six.b(''.join(
         random.choice(string.ascii_uppercase + string.digits + '\n')
         for _ in range(100)
-    )
+    ))
 
 
-def test_match_md5(monkeypatch, random_string):
+def test_match_md5(monkeypatch, random_bytes):
     md5 = hashlib.md5()
-    md5.update(random_string.encode())
+    md5.update(random_bytes)
     md5sum = md5.hexdigest()
-    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: md5sum.encode()))
+    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: six.b(md5sum)))
     monkeypatch.setattr('django.utils.six.moves.urllib.request.urlopen', urlopen_mock)
-    fp = BytesIO(random_string.encode())
+    fp = BytesIO(random_bytes)
     assert geoipdb_loader._match_md5(fp, 'someurl')
     urlopen_mock.assert_called_once_with('someurl')
-    assert fp.read().decode() == random_string
+    assert fp.read() == random_bytes
 
 
 @pytest.mark.parametrize('is_md5_match', [False, True])
 @pytest.mark.parametrize('skip_md5', [False, True])
-def test_download_file(monkeypatch, tmpdir, settings, random_string, is_md5_match, skip_md5):
+def test_download_file(monkeypatch, tmpdir, settings, random_bytes, is_md5_match, skip_md5):
     def create_gzip(url, filename):
         with gzip.open(filename, 'wb') as f:
-            f.write(random_string.encode())
+            f.write(random_bytes)
 
     settings.GEOIP_PATH = str(tmpdir)
     monkeypatch.setattr(
@@ -58,7 +58,7 @@ def test_download_file(monkeypatch, tmpdir, settings, random_string, is_md5_matc
     monkeypatch.setattr('geoipdb_loader._match_md5', match_md5_mock)
     if is_md5_match or skip_md5:
         geoipdb_loader._download_file('somedb.mmdb.gz', skip_md5=skip_md5)
-        assert open(str(tmpdir.join('somedb.mmdb')), 'rb').read().decode() == random_string
+        assert open(str(tmpdir.join('somedb.mmdb')), 'rb').read() == random_bytes
     else:
         with pytest.raises(ValueError) as e:
             geoipdb_loader._download_file('somedb.mmdb.gz', skip_md5=skip_md5)
@@ -116,11 +116,11 @@ def test_download_edge_cases(monkeypatch, settings, tmpdir):
     (None, None),
     ('country.dat', 'city.mmdb')
 ])
-def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, paths):
+def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_bytes, paths):
     def create_gzip(url, filename):
         suffix = 'city' if 'city' in filename.lower() else 'country'
         with gzip.open(filename, 'wb') as f:
-            f.write(random_string.encode() + suffix.encode())
+            f.write(random_bytes + six.b(suffix))
 
     settings.GEOIP_COUNTRY, settings.GEOIP_CITY = paths
     settings.GEOIP_PATH = str(tmpdir)
@@ -134,17 +134,15 @@ def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_string, 
     if not version:
         version = 1 if django.VERSION[:2] == (1, 8) else 2
     if version == 1:
-        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoIP.dat')), 'rb').read().decode() == \
-                random_string + 'country'
-        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLiteCity.dat')), 'rb').read().decode() == \
-                random_string + 'city'
+        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoIP.dat')), 'rb').read() == \
+                random_bytes + six.b('country')
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLiteCity.dat')), 'rb').read() == \
+                random_bytes + six.b('city')
     else:
-        assert open(
-                str(
-                    tmpdir.join(settings.GEOIP_COUNTRY or 'GeoLite2-Country.mmdb')
-                ), 'rb').read().decode() == random_string + 'country'
-        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read().decode() == \
-                random_string + 'city'
+        assert open(str(tmpdir.join(settings.GEOIP_COUNTRY or 'GeoLite2-Country.mmdb')), 'rb').read() == \
+                random_bytes + six.b('country')
+        assert open(str(tmpdir.join(settings.GEOIP_CITY or 'GeoLite2-City.mmdb')), 'rb').read() == \
+                random_bytes + six.b('city')
 
 
 @pytest.mark.parametrize('version', [1, 2, None])

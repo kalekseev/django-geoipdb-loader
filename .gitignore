@@ -4,3 +4,7 @@
 htmlcov
 .cache
 .coverage
+.coverage.*
+dist/
+.envrc
+.direnv/
