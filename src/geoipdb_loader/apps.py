@@ -4,4 +4,4 @@ from django.apps import AppConfig
 
 
 class GeoipdbLoaderConfig(AppConfig):
-    name = 'geoipdb_loader'
+    name = "geoipdb_loader"

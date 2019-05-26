@@ -20,28 +20,28 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--skip-city',
-            action='store_true',
-            dest='skip_city',
-            help='Don\'t download city db'
+            "--skip-city",
+            action="store_true",
+            dest="skip_city",
+            help="Don't download city db",
         )
         parser.add_argument(
-            '--skip-country',
-            action='store_true',
-            dest='skip_country',
-            help='Don\'t download country db'
+            "--skip-country",
+            action="store_true",
+            dest="skip_country",
+            help="Don't download country db",
         )
         parser.add_argument(
-            '--skip-md5',
-            action='store_true',
-            dest='skip_md5',
-            help='Don\'t check md5 sum of the downloaded files'
+            "--skip-md5",
+            action="store_true",
+            dest="skip_md5",
+            help="Don't check md5 sum of the downloaded files",
         )
 
     def handle(self, *args, **options):
         download(
-            skip_city=options['skip_city'],
-            skip_country=options['skip_country'],
-            skip_md5=options['skip_md5'],
+            skip_city=options["skip_city"],
+            skip_country=options["skip_country"],
+            skip_md5=options["skip_md5"],
             logger=Logger(self.style, self.stdout),
         )
