@@ -5,7 +5,6 @@ import string
 import sys
 from io import BytesIO
 
-import django
 import geoipdb_loader
 import pytest
 from django.core import management
@@ -111,14 +110,13 @@ def test_download_edge_cases(monkeypatch, settings, tmpdir):
     assert str(e.value) == "GEOIP_PATH must be configured in settings."
     log_mock = mock.Mock()
     settings.GEOIP_PATH = str(tmpdir)
-    monkeypatch.setattr("logging.getLogger", lambda n: log_mock)
+    monkeypatch.setattr("geoipdb_loader._get_logger", lambda: log_mock)
     geoipdb_loader.download(skip_city=True, skip_country=True)
     log_mock.warn.assert_called_once_with("Nothing to download.")
 
 
-@pytest.mark.parametrize("version", [1, 2, None])
 @pytest.mark.parametrize("paths", [(None, None), ("country.dat", "city.mmdb")])
-def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_bytes, paths):
+def test_geoipdb_version(monkeypatch, settings, tmpdir, random_bytes, paths):
     def create_gzip(url, filename):
         suffix = "city" if "city" in filename.lower() else "country"
         with gzip.open(filename, "wb") as f:
@@ -126,58 +124,29 @@ def test_geoipdb_version(monkeypatch, settings, version, tmpdir, random_bytes, p
 
     settings.GEOIP_COUNTRY, settings.GEOIP_CITY = paths
     settings.GEOIP_PATH = str(tmpdir)
-    settings.GEOIPDB_VERSION = version
     monkeypatch.setattr(
         "django.utils.six.moves.urllib.request.urlretrieve",
         mock.Mock(side_effect=create_gzip),
     )
     geoipdb_loader.download(skip_md5=True)
 
-    if not version:
-        version = 1 if django.VERSION[:2] == (1, 8) else 2
-    if version == 1:
-        assert open(
-            str(tmpdir.join(settings.GEOIP_COUNTRY or "GeoIP.dat")), "rb"
-        ).read() == random_bytes + six.b("country")
-        assert open(
-            str(tmpdir.join(settings.GEOIP_CITY or "GeoLiteCity.dat")), "rb"
-        ).read() == random_bytes + six.b("city")
-    else:
-        assert open(
-            str(tmpdir.join(settings.GEOIP_COUNTRY or "GeoLite2-Country.mmdb")), "rb"
-        ).read() == random_bytes + six.b("country")
-        assert open(
-            str(tmpdir.join(settings.GEOIP_CITY or "GeoLite2-City.mmdb")), "rb"
-        ).read() == random_bytes + six.b("city")
+    assert open(
+        str(tmpdir.join(settings.GEOIP_COUNTRY or "GeoLite2-Country.mmdb")), "rb"
+    ).read() == random_bytes + six.b("country")
+    assert open(
+        str(tmpdir.join(settings.GEOIP_CITY or "GeoLite2-City.mmdb")), "rb"
+    ).read() == random_bytes + six.b("city")
 
 
-@pytest.mark.parametrize("version", [1, 2, None])
-def test_download_on_version(monkeypatch, settings, version, tmpdir):
-    settings.GEOIPDB_VERSION = version
+def test_download_on_version(monkeypatch, settings, tmpdir):
     settings.GEOIP_PATH = str(tmpdir)
-    if not version:
-        version = 1 if django.VERSION[:2] == (1, 8) else 2
     download_file_mock = mock.Mock()
     monkeypatch.setattr("geoipdb_loader._download_file", download_file_mock)
     geoipdb_loader.download()
-    if version == 2:
-        download_file_mock.assert_any_call(
-            maxmind_filename="GeoLite2-City.mmdb.gz",
-            skip_md5=False,
-            local_filename=None,
-        )
-        download_file_mock.assert_any_call(
-            maxmind_filename="GeoLite2-Country.mmdb.gz",
-            skip_md5=False,
-            local_filename=None,
-        )
-    else:
-        download_file_mock.assert_any_call(
-            maxmind_filename="GeoLiteCity.dat.gz", skip_md5=True, local_filename=None
-        )
-        download_file_mock.assert_any_call(
-            maxmind_filename="GeoLiteCountry/GeoIP.dat.gz",
-            skip_md5=True,
-            local_filename=None,
-        )
+    download_file_mock.assert_any_call(
+        maxmind_filename="GeoLite2-City.mmdb.gz", skip_md5=False, local_filename=None
+    )
+    download_file_mock.assert_any_call(
+        maxmind_filename="GeoLite2-Country.mmdb.gz", skip_md5=False, local_filename=None
+    )
     assert download_file_mock.call_count == 2

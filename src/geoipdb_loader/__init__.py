@@ -6,7 +6,6 @@ import os
 import shutil
 import tempfile
 
-import django
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.six.moves import urllib
@@ -38,17 +37,10 @@ def _atomic_write(fp, dst):
         os.rename(tmpfile.name, dst)
 
 
-def _get_geoipdb_version():
-    geoipdb_version = getattr(settings, "GEOIPDB_VERSION", None)
-    if geoipdb_version in (1, 2):
-        return geoipdb_version
-    if django.VERSION[:2] == (1, 8):
-        return 1
-    return 2
-
-
 def _download_file(maxmind_filename, skip_md5=False, local_filename=None):
     _, filename = os.path.split(maxmind_filename)
+    if not os.path.exists(settings.GEOIP_PATH):
+        raise ImproperlyConfigured("GEOIP_PATH directory doesn't exist on filesystem.")
     downloaded_file = os.path.join(settings.GEOIP_PATH, filename)
     if local_filename:
         db_file = os.path.join(settings.GEOIP_PATH, local_filename)
@@ -73,10 +65,12 @@ def _download_file(maxmind_filename, skip_md5=False, local_filename=None):
     os.remove(downloaded_file)
 
 
+def _get_logger():
+    return logging.getLogger(__name__)
+
+
 def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
-    if not logger:
-        logger = logging.getLogger(__name__)
-    geoipdb_version = _get_geoipdb_version()
+    logger = logger or _get_logger()
     files = []
     if not hasattr(settings, "GEOIP_PATH"):
         raise ImproperlyConfigured("GEOIP_PATH must be configured in settings.")
@@ -86,9 +80,6 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
             "skip_md5": skip_md5,
             "local_filename": getattr(settings, "GEOIP_CITY", None),
         }
-        if geoipdb_version == 1:
-            city_file["maxmind_filename"] = "GeoLiteCity.dat.gz"
-            city_file["skip_md5"] = True
         files.append(city_file)
     if not skip_country:
         country_file = {
@@ -96,9 +87,6 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
             "skip_md5": skip_md5,
             "local_filename": getattr(settings, "GEOIP_COUNTRY", None),
         }
-        if geoipdb_version == 1:
-            country_file["maxmind_filename"] = "GeoLiteCountry/GeoIP.dat.gz"
-            country_file["skip_md5"] = True
         files.append(country_file)
     if not files:
         logger.warn("Nothing to download.")

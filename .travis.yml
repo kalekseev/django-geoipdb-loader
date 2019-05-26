@@ -7,19 +7,13 @@ env:
     - LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
     - SEGFAULT_SIGNALS=all
   matrix:
-    - TOXENV=py27-django18
-
-    - TOXENV=py27-django110
-
     - TOXENV=py27-django111
-
-    - TOXENV=py36-django18
-
-    - TOXENV=py36-django110
 
     - TOXENV=py36-django111
 
-    - TOXENV=py36-django-latest
+    - TOXENV=py36-django21
+
+    - TOXENV=py36-django22
 
     - TOXENV=flake8
 
