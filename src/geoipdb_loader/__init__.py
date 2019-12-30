@@ -1,24 +1,28 @@
 import errno
-import gzip
 import hashlib
 import logging
 import os
 import shutil
+import tarfile
 import tempfile
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils import six
 from django.utils.six.moves import urllib
 
-MAXMIND_URL = "http://geolite.maxmind.com/download/geoip/database/"
+MAXMIND_URL = (
+    "https://download.maxmind.com/app/geoip_download"
+    "?edition_id={filename}&license_key={license_key}&suffix=tar.gz"
+)
 
 
-def _match_md5(fp, md5_url):
+def _match_md5(filename, md5_url):
     md5 = urllib.request.urlopen(md5_url).read()
     m = hashlib.md5()
-    for line in fp:
-        m.update(line)
-    fp.seek(0)
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), six.b("")):
+            m.update(chunk)
     return m.hexdigest() == md5.decode()
 
 
@@ -37,30 +41,39 @@ def _atomic_write(fp, dst):
         os.rename(tmpfile.name, dst)
 
 
-def _download_file(maxmind_filename, skip_md5=False, local_filename=None):
-    _, filename = os.path.split(maxmind_filename)
+def _download_file(kind, skip_md5=False, local_filename=None):
     if not os.path.exists(settings.GEOIP_PATH):
         raise ImproperlyConfigured("GEOIP_PATH directory doesn't exist on filesystem.")
-    downloaded_file = os.path.join(settings.GEOIP_PATH, filename)
-    if local_filename:
-        db_file = os.path.join(settings.GEOIP_PATH, local_filename)
-    else:
-        db_file = os.path.splitext(downloaded_file)[0]
-    urllib.request.urlretrieve(
-        urllib.parse.urljoin(MAXMIND_URL, maxmind_filename), downloaded_file
+    filename = "GeoLite2-{kind}".format(kind=kind)
+    downloaded_file = os.path.join(
+        settings.GEOIP_PATH, "{filename}.tar.gz".format(filename=filename)
     )
-    with gzip.open(downloaded_file, "rb") as outfile:
-        if not skip_md5:
-            md5_url = urllib.parse.urljoin(
-                MAXMIND_URL, filename.split(".", 1)[0] + ".md5"
+    db_file = os.path.join(
+        settings.GEOIP_PATH,
+        local_filename
+        if local_filename
+        else "{filename}.mmdb".format(filename=filename),
+    )
+    file_url = MAXMIND_URL.format(
+        filename=filename, license_key=settings.MAXMIND_LICENSE_KEY
+    )
+    urllib.request.urlretrieve(file_url, downloaded_file)
+    if not skip_md5:
+        if not _match_md5(downloaded_file, file_url + ".md5"):
+            try:
+                os.remove(downloaded_file)
+            finally:
+                raise ValueError(
+                    "md5 of %s doesn't match the signature." % downloaded_file
+                )
+    with tarfile.open(downloaded_file, "r:gz") as tf:
+        outfile = tf.extractfile(
+            next(
+                m
+                for m in tf.getmembers()
+                if m.name.endswith("{filename}.mmdb".format(filename=filename))
             )
-            if not _match_md5(outfile, md5_url):
-                try:
-                    os.remove(downloaded_file)
-                finally:
-                    raise ValueError(
-                        "md5 of %s doesn't match the signature." % downloaded_file
-                    )
+        )
         _atomic_write(outfile, db_file)
     os.remove(downloaded_file)
 
@@ -74,16 +87,18 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
     files = []
     if not hasattr(settings, "GEOIP_PATH"):
         raise ImproperlyConfigured("GEOIP_PATH must be configured in settings.")
+    if not hasattr(settings, "MAXMIND_LICENSE_KEY"):
+        raise ImproperlyConfigured("MAXMIND_LICENSE_KEY must be set in settings.")
     if not skip_city:
         city_file = {
-            "maxmind_filename": "GeoLite2-City.mmdb.gz",
+            "kind": "City",
             "skip_md5": skip_md5,
             "local_filename": getattr(settings, "GEOIP_CITY", None),
         }
         files.append(city_file)
     if not skip_country:
         country_file = {
-            "maxmind_filename": "GeoLite2-Country.mmdb.gz",
+            "kind": "Country",
             "skip_md5": skip_md5,
             "local_filename": getattr(settings, "GEOIP_COUNTRY", None),
         }
@@ -92,6 +107,6 @@ def download(skip_city=False, skip_country=False, skip_md5=False, logger=None):
         logger.warn("Nothing to download.")
         return
     for entry in files:
-        logger.info("Downloading %s ..." % entry["maxmind_filename"])
+        logger.info("Downloading %s db ..." % entry["kind"])
         _download_file(**entry)
     logger.info("Geoip files are updated.")

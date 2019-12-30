@@ -52,6 +52,7 @@ Add the app to INSTALLED_APPS and configure GEOIP_PATH::
     ]
 
     GEOIP_PATH = '/myproject/geoip'
+    MAXMIND_LICENSE_KEY = 'your license key'
 
 
 Usage
