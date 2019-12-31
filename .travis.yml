@@ -6,23 +6,6 @@ env:
   global:
     - LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
     - SEGFAULT_SIGNALS=all
-  matrix:
-    - TOXENV=py27-django111
-
-    - TOXENV=py36-django111
-
-    - TOXENV=py36-django21
-
-    - TOXENV=py36-django22
-
-    - TOXENV=flake8
-
-    - TOXENV=manifest
-
-    - TOXENV=readme
-
-    - TOXENV=isort
-
 
 before_install:
   - pip install coveralls
@@ -30,7 +13,7 @@ before_install:
   - uname -a
   - lsb_release -a
 install:
-  - pip install tox
+  - pip install tox coverage
   - virtualenv --version
   - easy_install --version
   - pip --version
@@ -38,7 +21,6 @@ install:
 script:
   - tox -v
 after_success:
-  - tox -e coverage-report
   - coveralls
 after_failure:
   - more .tox/log/* | cat
