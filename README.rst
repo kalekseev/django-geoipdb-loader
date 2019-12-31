@@ -23,7 +23,7 @@ Django GeoIP DB Loader
 
 Helps download and keep updated maxmind's geoip db required for `django GeoIP <https://docs.djangoproject.com/en/1.10/ref/contrib/gis/geoip2/>`_
 
-Django versions 1.11+ are supported.
+For Django 2.2+ and python 3.6+. For older versions use `pip install django-geoipdb-loader<1.0`.
 
 
 Why and when to use?

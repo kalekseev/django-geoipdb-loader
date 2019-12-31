@@ -5,11 +5,10 @@ import os
 import shutil
 import tarfile
 import tempfile
+import urllib.request
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.utils import six
-from django.utils.six.moves import urllib
 
 MAXMIND_URL = (
     "https://download.maxmind.com/app/geoip_download"
@@ -21,7 +20,7 @@ def _match_md5(filename, md5_url):
     md5 = urllib.request.urlopen(md5_url).read()
     m = hashlib.md5()
     with open(filename, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), six.b("")):
+        for chunk in iter(lambda: f.read(4096), b""):
             m.update(chunk)
     return m.hexdigest() == md5.decode()
 

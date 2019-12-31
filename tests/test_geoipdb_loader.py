@@ -4,12 +4,12 @@ import random
 import string
 import sys
 import tarfile
+from io import StringIO
 
 import geoipdb_loader
 import pytest
 from django.core import management
 from django.core.exceptions import ImproperlyConfigured
-from django.utils import six
 
 PY2 = sys.version_info[0] == 2
 
@@ -28,7 +28,7 @@ def random_str(size=20):
 
 @pytest.fixture
 def random_bytes():
-    return six.b(random_str(100))
+    return random_str(100).encode("utf8")
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def create_tar(tmpdir, random_bytes):
             directory, "GeoLite2-{kind}.mmdb".format(kind=suffix.title())
         )
         with open(fpath, "wb") as f:
-            f.write(random_bytes + six.b(suffix))
+            f.write(random_bytes + suffix.encode("utf8"))
         with tarfile.open(filename, "w:gz") as f:
             f.add(directory)
 
@@ -52,8 +52,8 @@ def test_match_md5(monkeypatch, random_bytes, tmpdir):
     md5 = hashlib.md5()
     md5.update(random_bytes)
     md5sum = md5.hexdigest()
-    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: six.b(md5sum)))
-    monkeypatch.setattr("django.utils.six.moves.urllib.request.urlopen", urlopen_mock)
+    urlopen_mock = mock.Mock(return_value=mock.Mock(read=lambda: md5sum.encode("utf8")))
+    monkeypatch.setattr("urllib.request.urlopen", urlopen_mock)
     filename = os.path.join(str(tmpdir), "md5")
     with open(filename, "wb") as f:
         f.write(random_bytes)
@@ -68,17 +68,15 @@ def test_download_file(
 ):
     settings.GEOIP_PATH = str(tmpdir)
     settings.MAXMIND_LICENSE_KEY = "randomstringkey"
-    monkeypatch.setattr(
-        "django.utils.six.moves.urllib.request.urlretrieve",
-        mock.Mock(side_effect=create_tar),
-    )
+    monkeypatch.setattr("urllib.request.urlretrieve", mock.Mock(side_effect=create_tar))
     match_md5_mock = mock.Mock(return_value=is_md5_match)
     monkeypatch.setattr("geoipdb_loader._match_md5", match_md5_mock)
     if is_md5_match or skip_md5:
         geoipdb_loader._download_file("City", skip_md5=skip_md5)
-        assert open(
-            str(tmpdir.join("GeoLite2-City.mmdb")), "rb"
-        ).read() == random_bytes + six.b("city")
+        assert (
+            open(str(tmpdir.join("GeoLite2-City.mmdb")), "rb").read()
+            == random_bytes + b"city"
+        )
     else:
         with pytest.raises(ValueError) as e:
             geoipdb_loader._download_file("City", skip_md5=skip_md5)
@@ -99,7 +97,7 @@ def test_command(monkeypatch, settings, tmpdir, skip_city, skip_country, skip_md
     settings.MAXMIND_LICENSE_KEY = "randomstringkey"
     download_file_mock = mock.Mock()
     monkeypatch.setattr("geoipdb_loader._download_file", download_file_mock)
-    out = six.StringIO()
+    out = StringIO()
     args = []
     if skip_city:
         args.append("--skip-city")
@@ -138,18 +136,19 @@ def test_geoipdb_version(
     settings.GEOIP_COUNTRY, settings.GEOIP_CITY = paths
     settings.GEOIP_PATH = str(tmpdir)
     settings.MAXMIND_LICENSE_KEY = "randomstringkey"
-    monkeypatch.setattr(
-        "django.utils.six.moves.urllib.request.urlretrieve",
-        mock.Mock(side_effect=create_tar),
-    )
+    monkeypatch.setattr("urllib.request.urlretrieve", mock.Mock(side_effect=create_tar))
     geoipdb_loader.download(skip_md5=True)
 
-    assert open(
-        str(tmpdir.join(settings.GEOIP_COUNTRY or "GeoLite2-Country.mmdb")), "rb"
-    ).read() == random_bytes + six.b("country")
-    assert open(
-        str(tmpdir.join(settings.GEOIP_CITY or "GeoLite2-City.mmdb")), "rb"
-    ).read() == random_bytes + six.b("city")
+    assert (
+        open(
+            str(tmpdir.join(settings.GEOIP_COUNTRY or "GeoLite2-Country.mmdb")), "rb"
+        ).read()
+        == random_bytes + b"country"
+    )
+    assert (
+        open(str(tmpdir.join(settings.GEOIP_CITY or "GeoLite2-City.mmdb")), "rb").read()
+        == random_bytes + b"city"
+    )
 
 
 def test_download_on_version(monkeypatch, settings, tmpdir):

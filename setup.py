@@ -17,7 +17,7 @@ def read(*names, **kwargs):
 
 setup(
     name="django-geoipdb-loader",
-    version="0.10.0",
+    version="1.0.0",
     description="Helps download and keep updated maxmind's geoip db required for django GeoIP",
     long_description="%s"
     % (
@@ -43,10 +43,10 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     keywords=["django", "geoip"],
 )
